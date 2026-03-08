@@ -44,6 +44,15 @@ class DumpLoaderService
             throw new RuntimeException(sprintf('Dump file not found or not readable: %s', $filePath));
         }
 
+        $fileSize = filesize($filePath);
+        if ($fileSize === false || $fileSize > 256 * 1024 * 1024) {
+            throw new RuntimeException(sprintf(
+                'Dump file exceeds the 256 MB limit (actual: %s bytes): %s',
+                $fileSize === false ? 'unknown' : number_format($fileSize),
+                $filePath
+            ));
+        }
+
         $sql = file_get_contents($filePath);
         if ($sql === false) {
             throw new RuntimeException(sprintf('Cannot read dump file: %s', $filePath));

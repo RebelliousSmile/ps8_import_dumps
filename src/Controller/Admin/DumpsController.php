@@ -160,6 +160,12 @@ class DumpsController extends FrameworkBundleAdminController
         }
 
         $table = $request->request->get('table', '');
+        if (!preg_match('/^[a-zA-Z0-9_]+$/', $table)) {
+            $this->addFlash('error', 'Invalid table name.');
+
+            return $this->redirectToRoute('sc_import_dumps_index');
+        }
+
         $rowsJson = $request->request->get('rows_json', '[]');
         $skipFkValidation = (bool) $request->request->get('skip_fk_validation', false);
 
