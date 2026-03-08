@@ -1,0 +1,174 @@
+{% extends '@PrestaShop/Admin/layout.html.twig' %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-header-title">SC Import Dumps</h3>
+    </div>
+
+    <div class="card-body">
+
+        {# Flash messages #}
+        {% for message in app.flashes('success') %}
+            <div class="alert alert-success">{{ message }}</div>
+        {% endfor %}
+        {% for message in app.flashes('error') %}
+            <div class="alert alert-danger">{{ message }}</div>
+        {% endfor %}
+
+        {# Upload section #}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4>Upload SQL Dump</h4>
+            </div>
+            <div class="card-body">
+                <form action="{{ path('sc_import_dumps_upload') }}" method="POST" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="dump_file">SQL file (.sql)</label>
+                        <input type="file" class="form-control-file" id="dump_file" name="dump_file" accept=".sql" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary mt-2">Upload</button>
+                </form>
+            </div>
+        </div>
+
+        {# Compare section #}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4>Compare Tables</h4>
+            </div>
+            <div class="card-body">
+                <form action="{{ path('sc_import_dumps_compare') }}" method="POST">
+
+                    {# Source type selection #}
+                    <div class="form-group">
+                        <label>Source Type</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="source_type" id="source_dump" value="dump" checked>
+                            <label class="form-check-label" for="source_dump">SQL Dump file</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="source_type" id="source_external" value="external">
+                            <label class="form-check-label" for="source_external">External database connection</label>
+                        </div>
+                    </div>
+
+                    {# Dump file selection #}
+                    <div id="dump-file-section" class="form-group">
+                        <label for="source_file">Available Dumps</label>
+                        {% if has_dumps %}
+                            <select class="form-control" name="source_file" id="source_file">
+                                {% for dump in available_dumps %}
+                                    <option value="{{ dump }}">{{ dump }}</option>
+                                {% endfor %}
+                            </select>
+                        {% else %}
+                            <p class="text-muted">No dumps available. Upload a SQL file above.</p>
+                        {% endif %}
+                    </div>
+
+                    {# External connection credentials #}
+                    <div id="external-conn-section" class="card p-3 bg-light" style="display:none;">
+                        <p class="text-info small mb-2">Credentials are used only for this session and are never stored.</p>
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="ext_host">Host</label>
+                                <input type="text" class="form-control" id="ext_host" name="ext_host" placeholder="localhost">
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label for="ext_port">Port</label>
+                                <input type="number" class="form-control" id="ext_port" name="ext_port" value="3306">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="ext_user">User</label>
+                                <input type="text" class="form-control" id="ext_user" name="ext_user">
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="ext_password">Password</label>
+                                <input type="password" class="form-control" id="ext_password" name="ext_password" autocomplete="new-password">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="ext_dbname">Database name</label>
+                            <input type="text" class="form-control" id="ext_dbname" name="ext_dbname">
+                        </div>
+                    </div>
+
+                    {# Tables to compare #}
+                    <div class="form-group mt-3">
+                        <label for="tables">Tables to compare (one per line, without prefix)</label>
+                        <textarea class="form-control" id="tables_input" rows="5" placeholder="product&#10;product_lang&#10;category"></textarea>
+                        <small class="form-text text-muted">Enter table names without the database prefix (e.g. "product" for low977product).</small>
+                    </div>
+
+                    {# Hidden multi-value tables field #}
+                    <div id="tables-fields"></div>
+
+                    <button type="submit" class="btn btn-success mt-2" id="compare-btn">Compare</button>
+                </form>
+            </div>
+        </div>
+
+        {# Clean temp tables #}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4>Clean temporary tables</h4>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Drop all temporary tables created during previous comparisons (<code>low977sc_dump_temp_*</code>).</p>
+                <form action="{{ path('sc_import_dumps_clean') }}" method="POST">
+                    <input type="hidden" name="_token" value="{{ csrf_token('sc_import_dumps_clean') }}">
+                    <button type="submit" class="btn btn-warning" onclick="return confirm('Drop all sc_dump_temp_* tables?')">
+                        Clean Temp Tables
+                    </button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+(function() {
+    var dumpRadio = document.getElementById('source_dump');
+    var externalRadio = document.getElementById('source_external');
+    var dumpSection = document.getElementById('dump-file-section');
+    var externalSection = document.getElementById('external-conn-section');
+
+    function toggleSections() {
+        if (externalRadio.checked) {
+            dumpSection.style.display = 'none';
+            externalSection.style.display = 'block';
+        } else {
+            dumpSection.style.display = 'block';
+            externalSection.style.display = 'none';
+        }
+    }
+
+    dumpRadio.addEventListener('change', toggleSections);
+    externalRadio.addEventListener('change', toggleSections);
+
+    // Convert textarea to hidden fields on submit
+    document.getElementById('compare-btn').closest('form').addEventListener('submit', function(e) {
+        var textarea = document.getElementById('tables_input');
+        var container = document.getElementById('tables-fields');
+        container.innerHTML = '';
+        var tables = textarea.value.split('\n').map(function(t) { return t.trim(); }).filter(Boolean);
+        if (tables.length === 0) {
+            e.preventDefault();
+            alert('Please enter at least one table name.');
+            return;
+        }
+        tables.forEach(function(table) {
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'tables[]';
+            input.value = table;
+            container.appendChild(input);
+        });
+    });
+})();
+</script>
+{% endblock %}

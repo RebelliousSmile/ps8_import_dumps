@@ -1,0 +1,34 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    ScImportDumps\:
+        resource: '../src/'
+        exclude:
+            - '../src/Traits/'
+
+    ScImportDumps\Service\DumpLoaderService:
+        arguments:
+            $connection: '@doctrine.dbal.default_connection'
+            $dumpsDirectory: '%kernel.project_dir%/../modules/sc_import_dumps/dumps'
+            $dbPrefix: '%database_prefix%'
+
+    ScImportDumps\Service\DiffService:
+        arguments:
+            $connection: '@doctrine.dbal.default_connection'
+            $dbPrefix: '%database_prefix%'
+
+    ScImportDumps\Service\ImportService:
+        arguments:
+            $connection: '@doctrine.dbal.default_connection'
+            $dbPrefix: '%database_prefix%'
+
+    ScImportDumps\Controller\Admin\DumpsController:
+        public: true
+        tags: ['controller.service_arguments']
+        arguments:
+            $dumpLoaderService: '@ScImportDumps\Service\DumpLoaderService'
+            $diffService: '@ScImportDumps\Service\DiffService'
+            $importService: '@ScImportDumps\Service\ImportService'

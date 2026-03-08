@@ -1,0 +1,55 @@
+{% extends '@PrestaShop/Admin/layout.html.twig' %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="card-header-title">Import Result — <code>{{ table }}</code></h3>
+        <a href="{{ path('sc_import_dumps_index') }}" class="btn btn-secondary btn-sm">Back to Dashboard</a>
+    </div>
+
+    <div class="card-body">
+
+        {% if error %}
+            <div class="alert alert-danger">
+                <strong>Import failed:</strong> {{ error }}
+            </div>
+        {% else %}
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="alert alert-success">
+                        <strong>Inserted:</strong> {{ result.inserted }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="alert alert-warning">
+                        <strong>Skipped:</strong> {{ result.skipped }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="alert {{ result.errors|length > 0 ? 'alert-danger' : 'alert-success' }}">
+                        <strong>Errors:</strong> {{ result.errors|length }}
+                    </div>
+                </div>
+            </div>
+
+            {% if result.errors is not empty %}
+                <h5>Error Details</h5>
+                <ul class="list-group">
+                    {% for err in result.errors %}
+                        <li class="list-group-item list-group-item-danger">{{ err }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+
+            {% if result.inserted > 0 and result.errors is empty %}
+                <div class="alert alert-success mt-3">
+                    Import completed successfully. {{ result.inserted }} row(s) were inserted into <code>{{ table }}</code>.
+                </div>
+            {% endif %}
+
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}

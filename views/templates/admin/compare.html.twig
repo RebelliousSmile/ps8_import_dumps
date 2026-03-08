@@ -1,0 +1,129 @@
+{% extends '@PrestaShop/Admin/layout.html.twig' %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="card-header-title">Comparison Report</h3>
+        <a href="{{ path('sc_import_dumps_index') }}" class="btn btn-secondary btn-sm">Back</a>
+    </div>
+
+    <div class="card-body">
+
+        {% if error %}
+            <div class="alert alert-danger">
+                <strong>Error:</strong> {{ error }}
+            </div>
+        {% endif %}
+
+        {% if report is empty and not error %}
+            <div class="alert alert-warning">No tables were compared. Please select at least one table.</div>
+        {% endif %}
+
+        {% for table, data in report %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4>Table: <code>{{ table }}</code></h4>
+                </div>
+                <div class="card-body">
+
+                    {% if data.error %}
+                        <div class="alert alert-danger">{{ data.error }}</div>
+                    {% else %}
+
+                        {# Row counts #}
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <div class="alert alert-info mb-0">
+                                    <strong>Source rows:</strong> {{ data.rows_count_source }}
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="alert alert-info mb-0">
+                                    <strong>Target rows:</strong> {{ data.rows_count_target }}
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="alert {{ data.rows_missing_in_target|length > 0 ? 'alert-warning' : 'alert-success' }} mb-0">
+                                    <strong>Missing in target:</strong> {{ data.rows_missing_in_target|length }}
+                                </div>
+                            </div>
+                            {% if data.primary_key %}
+                                <div class="col-md-3">
+                                    <div class="alert alert-secondary mb-0">
+                                        <strong>PK:</strong> <code>{{ data.primary_key }}</code>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        {# Column differences #}
+                        {% if data.columns_only_in_source is not empty %}
+                            <div class="alert alert-warning">
+                                <strong>Columns only in source:</strong>
+                                {% for col in data.columns_only_in_source %}
+                                    <code>{{ col }}</code>{% if not loop.last %}, {% endif %}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
+                        {% if data.columns_only_in_target is not empty %}
+                            <div class="alert alert-info">
+                                <strong>Columns only in target:</strong>
+                                {% for col in data.columns_only_in_target %}
+                                    <code>{{ col }}</code>{% if not loop.last %}, {% endif %}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
+                        {# Missing rows #}
+                        {% if data.rows_missing_in_target is not empty %}
+                            <h5>Rows missing in target ({{ data.rows_missing_in_target|length }})</h5>
+                            <div class="table-responsive mb-3" style="max-height: 400px; overflow-y: auto;">
+                                <table class="table table-sm table-bordered table-hover">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            {% for col in data.rows_missing_in_target[0]|keys %}
+                                                <th>{{ col }}</th>
+                                            {% endfor %}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for row in data.rows_missing_in_target %}
+                                            <tr>
+                                                {% for val in row %}
+                                                    <td>{{ val is null ? '<em class="text-muted">NULL</em>'|raw : val }}</td>
+                                                {% endfor %}
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {# Import form for this table #}
+                            <form action="{{ path('sc_import_dumps_import') }}" method="POST">
+                                <input type="hidden" name="_token" value="{{ csrf_token('sc_import_dumps_import') }}">
+                                <input type="hidden" name="table" value="{{ table }}">
+                                <input type="hidden" name="rows_json" value="{{ data.rows_missing_in_target|json_encode }}">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" name="skip_fk_validation" id="skip_fk_{{ table }}" value="1">
+                                    <label class="form-check-label" for="skip_fk_{{ table }}">
+                                        Skip foreign key validation (id_lang, id_shop, id_currency)
+                                    </label>
+                                </div>
+                                <button type="submit" class="btn btn-danger"
+                                        onclick="return confirm('Import {{ data.rows_missing_in_target|length }} rows into `{{ table }}`? This cannot be undone.')">
+                                    Import {{ data.rows_missing_in_target|length }} missing row(s) into target
+                                </button>
+                            </form>
+                        {% else %}
+                            <div class="alert alert-success">No missing rows detected for this table.</div>
+                        {% endif %}
+
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+
+    </div>
+</div>
+{% endblock %}

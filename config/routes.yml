@@ -1,0 +1,29 @@
+sc_import_dumps_index:
+    path: /sc-import-dumps/
+    methods: [GET]
+    defaults:
+        _controller: 'ScImportDumps\Controller\Admin\DumpsController::indexAction'
+
+sc_import_dumps_upload:
+    path: /sc-import-dumps/upload
+    methods: [POST]
+    defaults:
+        _controller: 'ScImportDumps\Controller\Admin\DumpsController::uploadAction'
+
+sc_import_dumps_compare:
+    path: /sc-import-dumps/compare
+    methods: [POST]
+    defaults:
+        _controller: 'ScImportDumps\Controller\Admin\DumpsController::compareAction'
+
+sc_import_dumps_import:
+    path: /sc-import-dumps/import
+    methods: [POST]
+    defaults:
+        _controller: 'ScImportDumps\Controller\Admin\DumpsController::importAction'
+
+sc_import_dumps_clean:
+    path: /sc-import-dumps/clean
+    methods: [POST]
+    defaults:
+        _controller: 'ScImportDumps\Controller\Admin\DumpsController::cleanAction'
