@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace ScImportDumps\Controller\Admin;
 
 use PrestaShopBundle\Controller\Admin\FrameworkBundleAdminController;
+use PrestaShopBundle\Security\Annotation\AdminSecurity;
 use ScImportDumps\Service\DiffService;
 use ScImportDumps\Service\DumpLoaderService;
 use ScImportDumps\Service\ImportService;
@@ -32,6 +33,8 @@ class DumpsController extends FrameworkBundleAdminController
 
     /**
      * Dashboard: list available dumps + form for external DB connection.
+     *
+     * @AdminSecurity("is_granted('read', request.get('_legacy_controller'))")
      */
     public function indexAction(): Response
     {
@@ -45,9 +48,17 @@ class DumpsController extends FrameworkBundleAdminController
 
     /**
      * Handle SQL file upload (POST).
+     *
+     * @AdminSecurity("is_granted('update', request.get('_legacy_controller'))")
      */
     public function uploadAction(Request $request): Response
     {
+        if (!$this->isCsrfTokenValid('sc_import_dumps_upload', $request->request->get('_token'))) {
+            $this->addFlash('error', 'Invalid CSRF token.');
+
+            return $this->redirectToRoute('sc_import_dumps_index');
+        }
+
         $file = $request->files->get('dump_file');
 
         if ($file === null) {
@@ -79,10 +90,22 @@ class DumpsController extends FrameworkBundleAdminController
 
     /**
      * Run the comparison (POST: tables + source selection).
+     *
+     * @AdminSecurity("is_granted('read', request.get('_legacy_controller'))")
      */
     public function compareAction(Request $request): Response
     {
-        $tables = $request->request->all('tables');
+        if (!$this->isCsrfTokenValid('sc_import_dumps_compare', $request->request->get('_token'))) {
+            $this->addFlash('error', 'Invalid CSRF token.');
+
+            return $this->redirectToRoute('sc_import_dumps_index');
+        }
+
+        $rawTables = $request->request->all('tables');
+        $tables = array_values(array_filter(
+            (array) $rawTables,
+            static fn ($t) => is_string($t) && preg_match('/^[a-zA-Z0-9_]+$/', $t)
+        ));
         $sourceType = $request->request->get('source_type', 'dump');
         $sourceFile = $request->request->get('source_file', '');
 
@@ -125,6 +148,8 @@ class DumpsController extends FrameworkBundleAdminController
 
     /**
      * Import missing rows (POST + CSRF).
+     *
+     * @AdminSecurity("is_granted('update', request.get('_legacy_controller'))")
      */
     public function importAction(Request $request): Response
     {
@@ -159,6 +184,8 @@ class DumpsController extends FrameworkBundleAdminController
 
     /**
      * Drop all temporary tables (POST + CSRF).
+     *
+     * @AdminSecurity("is_granted('delete', request.get('_legacy_controller'))")
      */
     public function cleanAction(Request $request): Response
     {
